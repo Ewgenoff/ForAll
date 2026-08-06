@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Главная</title>
+    <!-- Начальный стиль (по умолчанию) -->
+    <link id="theme-style" rel="stylesheet" href="style.css">
+    
+    <style>
+        /* Стили для плавающей панели смены тем */
+        .theme-switcher {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            display: flex;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+        .theme-btn {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .theme-btn:active {
+            background: rgba(255,255,255,0.4);
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Панель переключения стилей -->
+    <div class="theme-switcher">
+        <button class="theme-btn" onclick="setTheme('style.css')">iOS</button>
+        <button class="theme-btn" onclick="setTheme('cyberpunk.css')">Кибер</button>
+        <button class="theme-btn" onclick="setTheme('skeuo-neomorph.css')">Нео</button>
+        <button class="theme-btn" onclick="setTheme('witcher.css')">Ведьмак</button>
+    </div>
+
+    <div class="main-container">
+        <!-- Шапка -->
+        <div class="header">
+            <h1 id="greeting">Добро пожаловать!</h1>
+            
+            <!-- Плашки даты и времени -->
+            <div class="datetime-chips">
+                <div class="chip" id="chip-weekday">...</div>
+                <div class="chip" id="chip-date">...</div>
+                <div class="chip chip-time" id="chip-time">...</div>
+            </div>
+        </div>
+
+        <!-- Кнопки-ссылки -->
+        <div class="list-container">
+            <!-- Вызов кастомного модального окна -->
+            <a href="#" class="card" onclick="event.preventDefault(); showIosAlert('Офлайн режим', 'Упс... Доступ к странице ограничен офлайн режимом!');">
+                <div class="row-icon">⏳</div>
+                <div class="row-content">
+                    <h2>Мой таймлайн</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="MyFamily.html" class="card">
+                <div class="row-icon">👨‍👩‍👧‍👦</div>
+                <div class="row-content">
+                    <h2>Мои родственники</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="medications.html" class="card">
+                <div class="row-icon">💊</div>
+                <div class="row-content">
+                    <h2>Лекарства</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="LEGO.html" class="card">
+                <div class="row-icon">🧱</div>
+                <div class="row-content">
+                    <h2>LEGO наборы</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <!-- Две маленькие кнопки в одну строку -->
+            <div class="row-container">
+                <a href="LEGO_Parsing.html" class="card card-small">
+                    <div class="row-icon">🌐</div>
+                    <div class="row-content">
+                        <h2>Лего парсинг</h2>
+                    </div>
+                </a>
+
+                <a href="LEGO_Find.html" class="card card-small">
+                    <div class="row-icon">🔍</div>
+                    <div class="row-content">
+                        <h2>Поиск LEGO</h2>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подвал -->
+    <div class="footer">
+        Версия 1.3 (by Ewgenoff 05.08.2026)
+    </div>
+
+    <!-- HTML СТРУКТУРА МОДАЛЬНОГО ОКНА -->
+    <div class="modal-overlay" id="iosAlertOverlay" onclick="hideIosAlert(event)">
+        <div class="ios-modal" onclick="event.stopPropagation()">
+            <div class="modal-content">
+                <div class="modal-title" id="iosAlertTitle">Заголовок</div>
+                <div class="modal-text" id="iosAlertText">Текст сообщения</div>
+            </div>
+            <button class="modal-button" onclick="hideIosAlert()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // === ЛОГИКА СМЕНЫ СТИЛЕЙ ===
+        function setTheme(themeName) {
+            // Меняем href у тега link
+            document.getElementById('theme-style').setAttribute('href', themeName);
+            // Сохраняем выбор в localStorage
+            localStorage.setItem('selectedTheme', themeName);
+        }
+
+        // При загрузке страницы проверяем, есть ли сохраненная тема
+        (function() {
+            const savedTheme = localStorage.getItem('selectedTheme');
+            if (savedTheme) {
+                document.getElementById('theme-style').setAttribute('href', savedTheme);
+            }
+        })();
+
+        // === ОСТАЛЬНЫЕ СКРИПТЫ ===
+        function showIosAlert(title, text) {
+            document.getElementById('iosAlertTitle').textContent = title;
+            document.getElementById('iosAlertText').textContent = text;
+            document.getElementById('iosAlertOverlay').classList.add('active');
+        }
+
+        function hideIosAlert(event) {
+            if (event) event.preventDefault();
+            document.getElementById('iosAlertOverlay').classList.remove('active');
+        }
+
+        function updateWidget() {
+            const now = new Date();
+            const month = now.getMonth();
+            const day = now.getDate();
+            const hours = now.getHours();
+
+            const greetingEl = document.getElementById('greeting');
+            if (month === 6 && day === 6) {
+                greetingEl.textContent = "С Днем рождения!";
+            } else {
+                if (hours >= 4 && hours < 12) greetingEl.textContent = "Доброе утро!";
+                else if (hours >= 12 && hours < 17) greetingEl.textContent = "Добрый день!";
+                else if (hours >= 17 && hours < 23) greetingEl.textContent = "Добрый вечер!";
+                else greetingEl.textContent = "Доброй ночи!";
+            }
+
+            const weekday = now.toLocaleDateString('ru-RU', { weekday: 'long' });
+            document.getElementById('chip-weekday').textContent = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+            const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('chip-date').textContent = dateStr;
+
+            const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('chip-time').textContent = timeStr;
+        }
+
+        updateWidget();
+        setInterval(updateWidget, 1000);
+    </script>
+</body>
+</html>
