@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Главная</title>
+    <!-- Основной CSS тег с id для диначеской смены темы -->
+    <link id="themeStylesheet" rel="stylesheet" href="style.css">
+    <style>
+        /* Стили для блока переключений тем */
+        .theme-switcher {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 16px;
+            width: 100%;
+        }
+        .theme-btn {
+            flex: 1;
+            padding: 6px 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-control);
+            background: var(--card-bg-glass);
+            color: var(--text-primary);
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+        .theme-btn.active {
+            background: var(--color-default);
+            color: #ffffff;
+            border-color: var(--color-default);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <!-- Переключатель 4 тем -->
+        <div class="theme-switcher">
+            <button class="theme-btn" onclick="setTheme('style.css', this)">Стиль 1</button>
+            <button class="theme-btn" onclick="setTheme('style2.css', this)">Стиль 2</button>
+            <button class="theme-btn" onclick="setTheme('style3.css', this)">Стиль 3</button>
+            <button class="theme-btn" onclick="setTheme('style4.css', this)">Стиль 4</button>
+        </div>
+
+        <!-- Шапка -->
+        <div class="header">
+            <h1 id="greeting">Добро пожаловать!</h1>
+            
+            <!-- Плашки даты и времени -->
+            <div class="datetime-chips">
+                <div class="chip" id="chip-weekday">...</div>
+                <div class="chip" id="chip-date">...</div>
+                <div class="chip chip-time" id="chip-time">...</div>
+            </div>
+        </div>
+
+        <!-- Кнопки-ссылки -->
+        <div class="list-container">
+            <!-- Вызов кастомного модального окна -->
+            <a href="#" class="card" onclick="event.preventDefault(); showIosAlert('Офлайн режим', 'Упс... Доступ к странице ограничен офлайн режимом!');">
+                <div class="row-icon">⏳</div>
+                <div class="row-content">
+                    <h2>Мой таймлайн</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="MyFamily.html" class="card">
+                <div class="row-icon">👨‍👩‍👧‍👦</div>
+                <div class="row-content">
+                    <h2>Мои родственники</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="medications.html" class="card">
+                <div class="row-icon">💊</div>
+                <div class="row-content">
+                    <h2>Лекарства</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <a href="LEGO.html" class="card">
+                <div class="row-icon">🧱</div>
+                <div class="row-content">
+                    <h2>LEGO наборы</h2>
+                </div>
+                <div class="chevron">›</div>
+            </a>
+
+            <!-- Две маленькие кнопки в одну строку -->
+            <div class="row-container">
+                <a href="LEGO_Parsing.html" class="card card-small">
+                    <div class="row-icon">🌐</div>
+                    <div class="row-content">
+                        <h2>Лего парсинг</h2>
+                    </div>
+                </a>
+
+                <a href="LEGO_Find.html" class="card card-small">
+                    <div class="row-icon">🔍</div>
+                    <div class="row-content">
+                        <h2>Поиск LEGO</h2>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Подвал -->
+    <div class="footer">
+        Версия 1.3 (by Ewgenoff 05.08.2026)
+    </div>
+
+    <!-- HTML СТРУКТУРА МОДАЛЬНОГО ОКНА -->
+    <div class="modal-overlay" id="iosAlertOverlay" onclick="hideIosAlert(event)">
+        <div class="ios-modal" onclick="event.stopPropagation()">
+            <div class="modal-content">
+                <div class="modal-title" id="iosAlertTitle">Заголовок</div>
+                <div class="modal-text" id="iosAlertText">Текст сообщения</div>
+            </div>
+            <button class="modal-button" onclick="hideIosAlert()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Функция переключения тем
+        function setTheme(fileName, btnElement) {
+            document.getElementById('themeStylesheet').setAttribute('href', fileName);
+            localStorage.setItem('selectedTheme', fileName);
+
+            // Обновление состояния активной кнопки
+            const buttons = document.querySelectorAll('.theme-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            if (btnElement) {
+                btnElement.classList.add('active');
+            } else {
+                // Если вызвано при загрузке страницы
+                buttons.forEach(btn => {
+                    if (btn.getAttribute('onclick').includes(fileName)) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+        }
+
+        // Загрузка сохраненной темы при открытии страницы
+        (function initTheme() {
+            const savedTheme = localStorage.getItem('selectedTheme') || 'style.css';
+            setTheme(savedTheme);
+        })();
+
+        // Функции для управления модальным окном
+        function showIosAlert(title, text) {
+            document.getElementById('iosAlertTitle').textContent = title;
+            document.getElementById('iosAlertText').textContent = text;
+            document.getElementById('iosAlertOverlay').classList.add('active');
+        }
+
+        function hideIosAlert(event) {
+            if (event) event.preventDefault();
+            document.getElementById('iosAlertOverlay').classList.remove('active');
+        }
+
+        function updateWidget() {
+            const now = new Date();
+            const month = now.getMonth();
+            const day = now.getDate();
+            const hours = now.getHours();
+
+            const greetingEl = document.getElementById('greeting');
+            if (month === 6 && day === 6) {
+                greetingEl.textContent = "С Днем рождения!";
+            } else {
+                if (hours >= 4 && hours < 12) {
+                    greetingEl.textContent = "Доброе утро!";
+                } else if (hours >= 12 && hours < 17) {
+                    greetingEl.textContent = "Добрый день!";
+                } else if (hours >= 17 && hours < 23) {
+                    greetingEl.textContent = "Добрый вечер!";
+                } else {
+                    greetingEl.textContent = "Доброй ночи!";
+                }
+            }
+
+            const weekday = now.toLocaleDateString('ru-RU', { weekday: 'long' });
+            document.getElementById('chip-weekday').textContent = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
+            const dateStr = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('chip-date').textContent = dateStr;
+
+            const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('chip-time').textContent = timeStr;
+        }
+
+        updateWidget();
+        setInterval(updateWidget, 1000);
+    </script>
+</body>
+</html>
