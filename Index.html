@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Golden Liquid — WebGL</title>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+    }
+
+    body {
+        cursor: none;
+    }
+
+    canvas {
+        position: fixed;
+        inset: 0;
+        display: block;
+    }
+
+    /* Очень мягкая виньетка */
+    .vignette {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 5;
+
+        background:
+            radial-gradient(
+                ellipse at center,
+                transparent 35%,
+                rgba(0,0,0,.12) 60%,
+                rgba(0,0,0,.72) 100%
+            );
+    }
+
+    /* Световой ореол мыши */
+    .mouse-glow {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+
+        transform: translate(-50%, -50%);
+
+        pointer-events: none;
+        z-index: 10;
+
+        border-radius: 50%;
+
+        background:
+            radial-gradient(
+                circle,
+                rgba(255,220,100,.10) 0%,
+                rgba(255,180,30,.045) 25%,
+                rgba(255,150,0,.015) 45%,
+                transparent 70%
+            );
+
+        filter: blur(15px);
+
+        opacity: 0;
+
+        transition: opacity .25s ease;
+    }
+
+    /* Маленький золотой курсор */
+    .cursor {
+        position: fixed;
+
+        width: 5px;
+        height: 5px;
+
+        transform: translate(-50%, -50%);
+
+        border-radius: 50%;
+
+        background: #fff7cf;
+
+        box-shadow:
+            0 0 8px #fff0a0,
+            0 0 18px #ffc928,
+            0 0 40px rgba(255,180,20,.8);
+
+        pointer-events: none;
+
+        z-index: 20;
+
+        opacity: 0;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="mouse-glow" id="mouseGlow"></div>
+<div class="cursor" id="cursor"></div>
+<div class="vignette"></div>
+
+
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<!-- Postprocessing -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+
+<script>
+
+/* =========================================================
+   GOLDEN LIQUID — PREMIUM WEBGL
+   ========================================================= */
+
+
+/* ---------------------------------------------------------
+   BASIC THREE.JS
+   --------------------------------------------------------- */
+
+const scene = new THREE.Scene();
+
+scene.background =
+    new THREE.Color(0x020100);
+
+
+/* ---------------------------------------------------------
+   CAMERA
+   --------------------------------------------------------- */
+
+const camera =
+    new THREE.PerspectiveCamera(
+        55,
+        window.innerWidth /
+        window.innerHeight,
+        0.1,
+        3000
+    );
+
+camera.position.z = 750;
+
+
+/* ---------------------------------------------------------
+   RENDERER
+   --------------------------------------------------------- */
+
+const renderer =
+    new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+        powerPreference: "high-performance"
+    });
+
+renderer.setPixelRatio(
+    Math.min(
+        window.devicePixelRatio,
+        2
+    )
+);
+
+renderer.setSize(
+    window.innerWidth,
+    window.innerHeight
+);
+
+renderer.outputColorSpace =
+    THREE.SRGBColorSpace;
+
+renderer.toneMapping =
+    THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure =
+    1.25;
+
+document.body.appendChild(
+    renderer.domElement
+);
+
+
+/* =========================================================
+   POST PROCESSING — CINEMATIC BLOOM
+   ========================================================= */
+
+const composer =
+    new THREE.EffectComposer(
+        renderer
+    );
+
+
+const renderPass =
+    new THREE.RenderPass(
+        scene,
+        camera
+    );
+
+composer.addPass(
+    renderPass
+);
+
+
+const bloomPass =
+    new THREE.UnrealBloomPass(
+        new THREE.Vector2(
+            window.innerWidth,
+            window.innerHeight
+        ),
+
+        1.5,    // intensity
+        .75,    // radius
+        .05     // threshold
+    );
+
+
+composer.addPass(
+    bloomPass
+);
+
+
+/* =========================================================
+   MOUSE
+   ========================================================= */
+
+const mouse = {
+
+    x: 0,
+    y: 0,
+
+    targetX: 0,
+    targetY: 0,
+
+    velocityX: 0,
+    velocityY: 0,
+
+    speed: 0,
+
+    active: false
+};
+
+
+const mouseGlow =
+    document.getElementById(
+        "mouseGlow"
+    );
+
+const cursor =
+    document.getElementById(
+        "cursor"
+    );
+
+
+window.addEventListener(
+    "mousemove",
+    event => {
+
+        const oldX =
+            mouse.targetX;
+
+        const oldY =
+            mouse.targetY;
+
+
+        mouse.targetX =
+            (
+                event.clientX /
+                window.innerWidth
+                - .5
+            ) * 2;
+
+
+        mouse.targetY =
+            -(
+                event.clientY /
+                window.innerHeight
+                - .5
+            ) * 2;
+
+
+        mouse.velocityX =
+            mouse.targetX -
+            oldX;
+
+
+        mouse.velocityY =
+            mouse.targetY -
+            oldY;
+
+
+        mouse.speed =
+            Math.sqrt(
+                mouse.velocityX *
+                mouse.velocityX +
+
+                mouse.velocityY *
+                mouse.velocityY
+            );
+
+
+        mouse.active = true;
+
+
+        /*
+            HTML glow
+        */
+
+        mouseGlow.style.left =
+            event.clientX + "px";
+
+        mouseGlow.style.top =
+            event.clientY + "px";
+
+        mouseGlow.style.opacity =
+            Math.min(
+                1,
+                .35 +
+                mouse.speed * 5
+            );
+
+
+        cursor.style.left =
+            event.clientX + "px";
+
+        cursor.style.top =
+            event.clientY + "px";
+
+        cursor.style.opacity = 1;
+    }
+);
+
+
+window.addEventListener(
+    "mouseleave",
+    () => {
+
+        mouse.active = false;
+
+        mouseGlow.style.opacity = 0;
+        cursor.style.opacity = 0;
+    }
+);
+
+
+/* =========================================================
+   GOLD PARTICLE SYSTEM
+   ========================================================= */
+
+const PARTICLE_COUNT = 85000;
+
+const positions =
+    new Float32Array(
+        PARTICLE_COUNT * 3
+    );
+
+const original =
+    new Float32Array(
+        PARTICLE_COUNT * 3
+    );
+
+const velocities =
+    new Float32Array(
+        PARTICLE_COUNT * 3
+    );
+
+const randomness =
+    new Float32Array(
+        PARTICLE_COUNT
+    );
+
+
+/* ---------------------------------------------------------
+   Create particles
+   --------------------------------------------------------- */
+
+for (
+    let i = 0;
+    i < PARTICLE_COUNT;
+    i++
+) {
+
+    const i3 = i * 3;
+
+
+    /*
+        Распределение в огромном
+        3D объёме.
+    */
+
+    const radius =
+        Math.pow(
+            Math.random(),
+            .55
+        ) * 850;
+
+
+    const theta =
+        Math.random() *
+        Math.PI *
+        2;
+
+
+    const phi =
+        Math.acos(
+            2 *
+            Math.random() -
+            1
+        );
+
+
+    let x =
+        radius *
+        Math.sin(phi) *
+        Math.cos(theta);
+
+
+    let y =
+        radius *
+        Math.sin(phi) *
+        Math.sin(theta);
+
+
+    let z =
+        radius *
+        Math.cos(phi);
+
+
+    /*
+        Немного сжимаем
+        поле по Z.
+    */
+
+    z *= .55;
+
+
+    /*
+        Добавляем структуру
+        "золотого облака".
+    */
+
+    const wave =
+        Math.sin(
+            x * .008 +
+            z * .005
+        ) * 60;
+
+
+    y += wave;
+
+
+    positions[i3] =
+        original[i3] =
+        x;
+
+    positions[i3 + 1] =
+        original[i3 + 1] =
+        y;
+
+    positions[i3 + 2] =
+        original[i3 + 2] =
+        z;
+
+
+    /*
+        Начальная скорость
+    */
+
+    velocities[i3] =
+        (Math.random() - .5) *
+        .15;
+
+    velocities[i3 + 1] =
+        (Math.random() - .5) *
+        .15;
+
+    velocities[i3 + 2] =
+        (Math.random() - .5) *
+        .15;
+
+
+    randomness[i] =
+        Math.random();
+}
+
+
+/* =========================================================
+   PARTICLE SHADER
+   ========================================================= */
+
+const particleVertexShader = `
+
+    uniform float uTime;
+    uniform float uPixelRatio;
+
+    attribute float aRandom;
+
+    varying float vRandom;
+    varying float vDepth;
+
+
+    void main() {
+
+        vec3 pos = position;
+
+
+        /*
+            Органическое движение
+        */
+
+        float wave1 =
+            sin(
+                pos.x * 0.008 +
+                uTime * 0.45
+            ) * 8.0;
+
+        float wave2 =
+            cos(
+                pos.z * 0.011 +
+                uTime * 0.35
+            ) * 6.0;
+
+        float wave3 =
+            sin(
+                pos.y * 0.012 +
+                uTime * 0.25
+            ) * 5.0;
+
+
+        pos.y +=
+            wave1 +
+            wave2;
+
+        pos.x +=
+            wave3;
+
+
+        vec4 mvPosition =
+            modelViewMatrix *
+            vec4(
+                pos,
+                1.0
+            );
+
+
+        /*
+            Частицы становятся меньше
+            вдали и крупнее впереди.
+        */
+
+        float depth =
+            clamp(
+                1.0 /
+                (-mvPosition.z * 0.0015),
+                .25,
+                2.5
+            );
+
+
+        float size =
+            (
+                1.2 +
+                aRandom * 3.8
+            )
+            *
+            depth
+            *
+            uPixelRatio;
+
+
+        gl_PointSize =
+            size;
+
+
+        gl_Position =
+            projectionMatrix *
+            mvPosition;
+
+
+        vRandom =
+            aRandom;
+
+        vDepth =
+            depth;
+    }
+`;
+
+
+const particleFragmentShader = `
+
+    uniform float uTime;
+
+    varying float vRandom;
+    varying float vDepth;
+
+
+    void main() {
+
+        /*
+            Расстояние от центра частицы
+        */
+
+        vec2 uv =
+            gl_PointCoord -
+            vec2(.5);
+
+
+        float d =
+            length(uv);
+
+
+        /*
+            Мягкий круг
+        */
+
+        float alpha =
+            smoothstep(
+                .5,
+                .05,
+                d
+            );
+
+
+        /*
+            Маленькие яркие
+            золотые сердцевины
+        */
+
+        float core =
+            smoothstep(
+                .18,
+                0.0,
+                d
+            );
+
+
+        /*
+            Мерцание
+        */
+
+        float sparkle =
+            sin(
+                uTime * 5.0 +
+                vRandom * 60.0
+            ) *
+            .5 +
+            .5;
+
+
+        /*
+            Золотой цвет
+        */
+
+        vec3 darkGold =
+            vec3(
+                .38,
+                .18,
+                .025
+            );
+
+
+        vec3 gold =
+            vec3(
+                1.0,
+                .55,
+                .08
+            );
+
+
+        vec3 brightGold =
+            vec3(
+                1.0,
+                .88,
+                .45
+            );
+
+
+        vec3 color =
+            mix(
+                darkGold,
+                gold,
+                sparkle
+            );
+
+
+        color =
+            mix(
+                color,
+                brightGold,
+                core
+            );
+
+
+        /*
+            Глубокие частицы темнее
+        */
+
+        color *=
+            .55 +
+            vDepth *
+            .55;
+
+
+        float finalAlpha =
+            alpha *
+            (
+                .25 +
+                sparkle *
+                .65
+            );
+
+
+        gl_FragColor =
+            vec4(
+                color,
+                finalAlpha
+            );
+    }
+`;
+
+
+/* =========================================================
+   PARTICLE GEOMETRY
+   ========================================================= */
+
+const geometry =
+    new THREE.BufferGeometry();
+
+
+geometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(
+        positions,
+        3
+    )
+);
+
+
+geometry.setAttribute(
+    "aRandom",
+    new THREE.BufferAttribute(
+        randomness,
+        1
+    )
+);
+
+
+/* =========================================================
+   PARTICLE MATERIAL
+   ========================================================= */
+
+const particleMaterial =
+    new THREE.ShaderMaterial({
+
+        vertexShader:
+            particleVertexShader,
+
+        fragmentShader:
+            particleFragmentShader,
+
+        transparent: true,
+
+        depthWrite: false,
+
+        blending:
+            THREE.AdditiveBlending,
+
+        uniforms: {
+
+            uTime: {
+                value: 0
+            },
+
+            uPixelRatio: {
+                value:
+                    renderer.getPixelRatio()
+            }
+        }
+    });
+
+
+const particles =
+    new THREE.Points(
+        geometry,
+        particleMaterial
+    );
+
+
+scene.add(
+    particles
+);
+
+
+/* =========================================================
+   GOLDEN CORE / LIQUID CLOUD
+   ========================================================= */
+
+const coreGeometry =
+    new THREE.SphereGeometry(
+        270,
+        64,
+        64
+    );
+
+
+const coreMaterial =
+    new THREE.ShaderMaterial({
+
+        transparent: true,
+
+        side:
+            THREE.BackSide,
+
+        blending:
+            THREE.AdditiveBlending,
+
+        uniforms: {
+
+            uTime: {
+                value: 0
+            }
+        },
+
+        vertexShader: `
+
+            varying vec3 vNormal;
+
+            void main() {
+
+                vNormal =
+                    normalize(
+                        normalMatrix *
+                        normal
+                    );
+
+                gl_Position =
+                    projectionMatrix *
+                    modelViewMatrix *
+                    vec4(
+                        position,
+                        1.0
+                    );
+            }
+        `,
+
+        fragmentShader: `
+
+            uniform float uTime;
+
+            varying vec3 vNormal;
+
+            void main() {
+
+                float fresnel =
+                    pow(
+                        1.0 -
+                        abs(vNormal.z),
+                        3.0
+                    );
+
+
+                vec3 gold =
+                    vec3(
+                        1.0,
+                        .42,
+                        .03
+                    );
+
+
+                float pulse =
+                    sin(
+                        uTime *
+                        1.2
+                    )
+                    *
+                    .5
+                    +
+                    .5;
+
+
+                gl_FragColor =
+                    vec4(
+                        gold *
+                        (
+                            .025 +
+                            fresnel *
+                            .13 +
+                            pulse *
+                            .015
+                        ),
+
+                        fresnel *
+                        .12
+                    );
+            }
+        `
+    });
+
+
+const core =
+    new THREE.Mesh(
+        coreGeometry,
+        coreMaterial
+    );
+
+
+scene.add(
+    core
+);
+
+
+/* =========================================================
+   GOLDEN RINGS
+   ========================================================= */
+
+const rings = [];
+
+
+for (
+    let i = 0;
+    i < 6;
+    i++
+) {
+
+    const geometry =
+        new THREE.TorusGeometry(
+            270 + i * 45,
+            .7 + i * .25,
+            8,
+            160
+        );
+
+
+    const material =
+        new THREE.MeshBasicMaterial({
+
+            color:
+                0xffb52e,
+
+            transparent:
+                true,
+
+            opacity:
+                .025 -
+
+                i * .002,
+
+            blending:
+                THREE.AdditiveBlending
+        });
+
+
+    const ring =
+        new THREE.Mesh(
+            geometry,
+            material
+        );
+
+
+    ring.rotation.x =
+        Math.random() *
+        Math.PI;
+
+    ring.rotation.y =
+        Math.random() *
+        Math.PI;
+
+    ring.rotation.z =
+        Math.random() *
+        Math.PI;
+
+
+    scene.add(
+        ring
+    );
+
+
+    rings.push(
+        ring
+    );
+}
+
+
+/* =========================================================
+   MOUSE FORCE
+   ========================================================= */
+
+function updateParticles() {
+
+    /*
+        Плавное положение
+    */
+
+    mouse.x +=
+        (
+            mouse.targetX -
+            mouse.x
+        ) * .08;
+
+    mouse.y +=
+        (
+            mouse.targetY -
+            mouse.y
+        ) * .08;
+
+
+    /*
+        Мировая позиция курсора
+    */
+
+    const mouseWorldX =
+        mouse.x * 500;
+
+    const mouseWorldY =
+        mouse.y * 350;
+
+
+    const pos =
+        geometry.attributes.position.array;
+
+
+    for (
+        let i = 0;
+        i < PARTICLE_COUNT;
+        i++
+    ) {
+
+        const i3 =
+            i * 3;
+
+
+        let x =
+            pos[i3];
+
+        let y =
+            pos[i3 + 1];
+
+        let z =
+            pos[i3 + 2];
+
+
+        /*
+            Расстояние до курсора
+        */
+
+        const dx =
+            x -
+            mouseWorldX;
+
+        const dy =
+            y +
+            mouseWorldY;
+
+
+        const distance =
+            Math.sqrt(
+                dx * dx +
+                dy * dy
+            );
+
+
+        /*
+            Радиус воздействия
+        */
+
+        const radius =
+            260 +
+            mouse.speed * 900;
+
+
+        if (
+            distance < radius &&
+            distance > 1
+        ) {
+
+            /*
+                Очень мягкое начало
+                и сильный центр
+            */
+
+            const force =
+                Math.pow(
+                    1 -
+                    distance /
+                    radius,
+                    3
+                );
+
+
+            /*
+                Реальное
+                отталкивание
+            */
+
+            velocities[i3] +=
+                (
+                    dx /
+                    distance
+                )
+                *
+                force
+                *
+                .75;
+
+
+            velocities[i3 + 1] +=
+                (
+                    dy /
+                    distance
+                )
+                *
+                force
+                *
+                .75;
+
+
+            /*
+                Движение мыши
+                передаётся пыли
+            */
+
+            velocities[i3] -=
+                mouse.velocityX *
+                force *
+                .8;
+
+            velocities[i3 + 1] -=
+                mouse.velocityY *
+                force *
+                .8;
+        }
+
+
+        /*
+            Скорость затухает
+        */
+
+        velocities[i3] *= .94;
+        velocities[i3 + 1] *= .94;
+        velocities[i3 + 2] *= .94;
+
+
+        /*
+            Движение
+        */
+
+        pos[i3] +=
+            velocities[i3];
+
+        pos[i3 + 1] +=
+            velocities[i3 + 1];
+
+        pos[i3 + 2] +=
+            velocities[i3 + 2];
+
+
+        /*
+            Пружина к исходному
+            положению.
+        */
+
+        pos[i3] +=
+            (
+                original[i3] -
+                pos[i3]
+            )
+            *
+            .0008;
+
+        pos[i3 + 1] +=
+            (
+                original[i3 + 1] -
+                pos[i3 + 1]
+            )
+            *
+            .0008;
+
+        pos[i3 + 2] +=
+            (
+                original[i3 + 2] -
+                pos[i3 + 2]
+            )
+            *
+            .0008;
+    }
+
+
+    geometry.attributes.position.needsUpdate =
+        true;
+}
+
+
+/* =========================================================
+   ANIMATION
+   ========================================================= */
+
+const clock =
+    new THREE.Clock();
+
+
+function animate() {
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const time =
+        clock.getElapsedTime();
+
+
+    /*
+        Shader time
+    */
+
+    particleMaterial
+        .uniforms
+        .uTime
+        .value =
+        time;
+
+
+    coreMaterial
+        .uniforms
+        .uTime
+        .value =
+        time;
+
+
+    /*
+        Реакция частиц
+    */
+
+    updateParticles();
+
+
+    /*
+        Вращение золотого облака
+    */
+
+    particles.rotation.y =
+        Math.sin(
+            time * .035
+        ) * .08;
+
+    particles.rotation.x =
+        Math.cos(
+            time * .025
+        ) * .035;
+
+
+    /*
+        Центральное золотое ядро
+    */
+
+    core.rotation.y =
+        time * .035;
+
+    core.rotation.x =
+        Math.sin(
+            time * .15
+        ) * .1;
+
+
+    /*
+        Кольца
+    */
+
+    rings.forEach(
+        (ring, i) => {
+
+            ring.rotation.x +=
+                .00015 *
+                (i + 1);
+
+            ring.rotation.y +=
+                .00022 *
+                (i + 1);
+
+            ring.rotation.z +=
+                .00008 *
+                (i + 1);
+        }
+    );
+
+
+    /*
+        Камера немного следует
+        за мышью.
+    */
+
+    camera.position.x +=
+        (
+            mouse.x * 65 -
+            camera.position.x
+        ) * .025;
+
+
+    camera.position.y +=
+        (
+            mouse.y * 40 -
+            camera.position.y
+        ) * .025;
+
+
+    camera.lookAt(
+        0,
+        0,
+        0
+    );
+
+
+    /*
+        Bloom зависит от
+        движения мыши.
+    */
+
+    bloomPass.strength =
+        1.25 +
+        Math.min(
+            1.5,
+            mouse.speed * 12
+        );
+
+
+    /*
+        Немного уменьшаем
+        скорость мыши.
+    */
+
+    mouse.velocityX *= .9;
+    mouse.velocityY *= .9;
+
+    mouse.speed *= .9;
+
+
+    /*
+        Рендер
+    */
+
+    composer.render();
+}
+
+
+/* =========================================================
+   RESIZE
+   ========================================================= */
+
+window.addEventListener(
+    "resize",
+    () => {
+
+        camera.aspect =
+            window.innerWidth /
+            window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+
+
+        composer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+
+
+        particleMaterial
+            .uniforms
+            .uPixelRatio
+            .value =
+            renderer.getPixelRatio();
+    }
+);
+
+
+/* =========================================================
+   START
+   ========================================================= */
+
+animate();
+
+</script>
+
+</body>
+</html>
